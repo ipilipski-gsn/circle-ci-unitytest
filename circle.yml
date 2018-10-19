@@ -1,0 +1,73 @@
+
+version: 2.1
+executors:
+  my-executor:
+    macos:
+      xcode: "9.2"
+    environment:
+      XCODE_SCHEME: Unity-iPhone
+      XCODE_PROJECT: Unity-iPhone.xcodeproj
+    working_directory: ~/circleci-unity
+
+commands:
+  install_unity:
+    description: Install Unity Components
+    steps:
+      - run:
+          name: Installing Unity 
+          command: |
+            curl -o Unity.pkg http://netstorage.unity3d.com/unity/b7e030c65c9b/MacEditorInstaller/Unity-5.6.6f1.pkg
+            sudo installer -dumplog -package Unity.pkg -target
+      - run:
+          name: Installing Unity iOS build support
+          command: |
+            curl -o Unity-iOS.pkg http://netstorage.unity3d.com/unity/b7e030c65c9b/MacEditorTargetInstaller/UnitySetup-iOS-Support-for-Editor-5.6.6f1.pkg
+            sudo installer -dumplog -package Unity-iOS.pkg -target
+  build_unity:
+    description: Build Unity Project
+    parameters:
+      targetPlatform:
+        type: string
+        default: "iOS"
+    steps:
+      - run: |
+          /Applications/Unity/Unity.app/Contents/MacOS/Unity \
+          -batchmode \
+          -silent-crashes \
+          -serial "$serial" \
+          -username "$username" \
+          -password "$password" \
+          -projectPath $(pwd) \
+          -executeMethod CommandLineBuild.iOSBuild \
+          -quit \
+          -logFile
+
+  return_unity_license:
+    description: Return the unity return_unity_license
+    steps:
+      - run: |
+          /Applications/Unity/Unity.app/Contents/MacOS/Unity  \
+          -quit \
+          -batchmode \
+          -returnlicense \
+          -projectPath $(pwd) \
+          -logFile
+      - when: always
+
+jobs:
+  build_ios:
+    executor: my-executor
+    steps:
+      - install_unity
+      - checkout
+      - build_unity:
+          targetPlatform: "iOS"
+      - return_unity_license
+      
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build_ios
+
